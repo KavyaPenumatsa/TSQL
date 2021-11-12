@@ -1,0 +1,123 @@
+1)create a table-valued function that returns a list of orders
+ including order id, customer id, order status, store id and staff id for the given year range
+
+CREATE FUNCTION udfProductYear (
+    @model_year varchar(30)
+)
+RETURNS TABLE
+AS
+RETURN
+    SELECT 
+        order_id,
+        customer_id,
+        store_id,
+		staff_id,
+		order_date,
+		order_status
+    FROM
+        sales.orders
+    WHERE
+        order_date = @model_year;
+SELECT * from
+ udfProductYear(2018);
+
+ ALTER FUNCTION udfProductYear (
+    @start_date varchar(30),
+    @end_date varchar(30)
+)
+RETURNS TABLE
+AS
+RETURN
+    SELECT 
+       order_id,
+        customer_id,
+        store_id,
+		staff_id,
+		order_date,
+		order_status
+    FROM
+        sales.orders
+    WHERE
+        order_date BETWEEN @start_date AND @end_date
+
+SELECT * from
+       udfProductYear(2017,2018)
+
+
+2. create a trigger that logs all removed records of customers table
+
+CREATE TABLE sales.customers_it(customer_id INT IDENTITY PRIMARY KEY,
+ first_name VARCHAR (255) NOT NULL,
+ last_name VARCHAR (255) NOT NULL,
+ phone VARCHAR (25),
+ email VARCHAR (255) NOT NULL,
+ street VARCHAR (255),
+ city VARCHAR (50),
+ state VARCHAR (25),
+ zip_code VARCHAR (5),
+ updated_at DATETIME NOT NULL,
+    operation CHAR(3) NOT NULL,
+    CHECK(operation = 'INS' or operation='DEL')  
+);
+
+
+CREATE TRIGGER sales.trg_customers_d
+ON sales.customers
+AFTER INSERT, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO sales.customers_d(
+        customer_id,
+        first_name,
+		last_name,
+		phone,
+		email,
+		street,
+		city,
+		state,
+		zip_code,
+		 updated_at,
+            operation
+    )
+    SELECT
+        i.customer_id,
+        first_name,
+		last_name,
+		phone,
+		email,
+		street,
+		city,
+		state,
+		zip_code,
+    GETDATE(),
+    'INS'
+    FROM
+        inserted i
+    UNION ALL
+    SELECT
+        d.customer_id,
+        first_name,
+		last_name,
+		phone,
+		email,
+		street,
+		city,
+		state,
+		zip_code,
+    GETDATE(),
+        'DEL'
+    FROM
+        deleted d;
+END
+
+
+
+SELECT * FROM sales.customers;
+
+DELETE FROM 
+    sales.customers
+WHERE 
+    customer_id = 1;
+
+select * from sales.customers_d;
